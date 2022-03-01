@@ -166,6 +166,7 @@ class Environment(object):
         avg_util = np.sum(link_state, axis=-1) / self.action_effective_step
         max_util = np.max(avg_util)
         global_reward = float(1.0 - max_util)
+        print("global_reward:",global_reward)
         if max_util > 1.0:
             done = True
             global_reward -= 1.0
@@ -188,6 +189,7 @@ class Environment(object):
         avg_util = np.sum(link_state, axis=-1) / self.action_effective_step
         max_util = np.max(avg_util)
         global_reward = float(1.0 - max_util)
+        # print("global_reward:",global_reward)
         if self.data_step >= self.point_count:
             done = True
         else:
@@ -200,6 +202,7 @@ class Environment(object):
     def _set_action(self, action_all):
         for i, agent in enumerate(self.controllable_sd_list):
             self.agent_action[agent] = action_all[i]
+        # print(self.agent_action)
 
     def _get_link_features(self, flows):
         features = np.zeros([self.num_links, self.action_effective_step], dtype=np.float32)

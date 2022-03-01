@@ -38,10 +38,11 @@ class Runner:
             with torch.no_grad():
                 for agent_id, agent in enumerate(self.agents):
                     action = agent.select_action(s[agent_id], self.noise, self.epsilon)
+                    # print(action)
                     u.append(action)
                     actions.append(action)
-            for i in range(self.args.n_agents):
-                actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
+            # for i in range(self.args.n_agents):
+            #     actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
             r,s_next, done, info = self.env.step(actions)
             self.buffer.store_episode(s[:self.args.n_agents], u, r[:self.args.n_agents], s_next[:self.args.n_agents])
             s = s_next
@@ -77,8 +78,8 @@ class Runner:
                         action = agent.select_action(s[agent_id], 0, 0)
                         actions.append(action)
                 # print(np.array(actions))
-                for i in range(self.args.n_agents):
-                    actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
+                # for i in range(self.args.n_agents):
+                #     actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
                 r, s_next, done, info = self.env.step_eval(actions)
                 rewards += r[0]
                 s = s_next
