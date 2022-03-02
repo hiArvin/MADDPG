@@ -166,14 +166,14 @@ class Environment(object):
         avg_util = np.sum(link_state, axis=-1) / self.action_effective_step
         max_util = np.max(avg_util)
         global_reward = float(1.0 - max_util)
-        print("global_reward:",global_reward)
+        # print("global_reward:",global_reward)
         if max_util > 1.0:
             done = True
             global_reward -= 1.0
         else:
             done = False
         rewards = [global_reward] + [global_reward] * len(self.controllable_sd_list)
-        dnn_feature = self._get_dnn_state(link_state, flows[:, :2].flatten())
+        dnn_feature = self._get_dnn_state(link_state, flows[:, :2].flatten()/np.max(self.link_capacity))
         info = {"link usage average": avg_util}
         return rewards, dnn_feature, done, info
 
