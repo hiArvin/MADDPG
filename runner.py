@@ -16,7 +16,7 @@ class Runner:
         self.env = env
         self.agents = self._init_agents()
         self.buffer = Buffer(args)
-        self.save_path = self.args.save_dir + '/' + self.args.scenario_name
+        self.save_path = self.args.save_dir
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
 
@@ -41,9 +41,10 @@ class Runner:
                     # print(action)
                     u.append(action)
                     actions.append(action)
+            # actions.append(np.array([0.5,0.5]))
             # for i in range(self.args.n_agents):
             #     actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
-            r,s_next, done, info = self.env.step(actions)
+            r, s_next, done, info = self.env.step(actions)
             self.buffer.store_episode(s[:self.args.n_agents], u, r[:self.args.n_agents], s_next[:self.args.n_agents])
             s = s_next
             if self.buffer.current_size >= self.args.batch_size:
@@ -54,14 +55,16 @@ class Runner:
                     agent.learn(transitions, other_agents)
             if time_step > 0 and time_step % self.args.evaluate_rate == 0:
                 returns.append(self.evaluate())
-                plt.figure()
-                plt.plot(range(len(returns)), returns)
-                plt.xlabel('episode * ' + str(self.args.evaluate_rate / self.episode_limit))
-                plt.ylabel('average returns')
-                plt.savefig(self.save_path + '/plt.png', format='png')
+
             self.noise = max(0.05, self.noise - 0.0000005)
-            self.epsilon = max(0.05, self.epsilon - 0.0000005)
+            self.epsilon = max(0.05, self.epsilon - 0.0005)
             np.save(self.save_path + '/returns.pkl', returns)
+
+        plt.figure()
+        plt.plot(range(len(returns)), returns)
+        plt.xlabel('episode * ' + str(self.args.evaluate_rate / self.args.time_steps))
+        plt.ylabel('average returns')
+        plt.savefig(self.save_path + '/'+self.args.env_name +'.png', format='png')
 
     def evaluate(self):
         returns = []
@@ -70,6 +73,7 @@ class Runner:
             s = self.env.reset_eval()
             rewards = 0
             done = False
+            act_all = []
             while not done:
                 # self.env.render()
                 actions = []
@@ -77,12 +81,14 @@ class Runner:
                     for agent_id, agent in enumerate(self.agents):
                         action = agent.select_action(s[agent_id], 0, 0)
                         actions.append(action)
-                # print(np.array(actions))
+                # actions.append(np.array([0.5,0.5]))
+                act_all.append(np.array(actions))
                 # for i in range(self.args.n_agents):
                 #     actions.append([0, np.random.rand() * 2 - 1, 0, np.random.rand() * 2 - 1, 0])
                 r, s_next, done, info = self.env.step_eval(actions)
-                rewards += r[0]
+                rewards += r[-1]
                 s = s_next
             returns.append(rewards)
             print('Returns is', rewards)
+            print(np.average(np.array(act_all),axis=0))
         return sum(returns) / self.args.evaluate_episodes

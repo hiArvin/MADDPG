@@ -89,7 +89,7 @@ class MADDPG:
         u[self.agent_id] = self.actor_network(o[self.agent_id])
         actor_loss = - self.critic_network(o, u).mean()
 
-        print("critic_loss: %f \t actor_loss: %f" % (critic_loss, actor_loss))
+        # print("critic_loss: %f \t actor_loss: %f" % (critic_loss, actor_loss))
         # if self.agent_id == 0:
         #     print('critic_loss is {}, actor_loss is {}'.format(critic_loss, actor_loss))
         # update the network

@@ -19,6 +19,10 @@ class Agent:
             pi = self.policy.actor_network(inputs).squeeze(0)
             # print('{} : {}'.format(self.name, pi))
             u = pi.cpu().numpy()
+            # print(u)
+            # np.clip(u,0.0,1.0,out=u)
+            # u = u / np.sum(u)
+            # print(u)
         return u.copy()
 
     def learn(self, transitions, other_agents):

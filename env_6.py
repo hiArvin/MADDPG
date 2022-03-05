@@ -20,7 +20,7 @@ BD, BEFD
 
 class Environment(object):
     def __init__(self):
-        self.link_capacity = 100.0
+        self.link_capacity = np.array([1, 1, 1, 2, 1, 1, 1], dtype=np.float32) * 100.0
         self.num_links = 7
         self.controllable_sd_list = ["AC", "BD"]
         self.paths = {"AC": [['A', 'C'], ["A", "E", "F", "C"]], "BD": [["B", "D"], ["B", "E", "F", "D"]]}
@@ -131,17 +131,18 @@ class Environment(object):
         self.agent_action = {"AC": np.array([0.5, 0.5]), "BD": np.array([0.5, 0.5])}
 
     def reset(self):
+        self.counter = 0
         self.data_step = np.random.randint(self.point_count)  # set the started flow point by random
         flow = self.sample(self.data_step)
         link_state = self._get_link_features(flow)
-        dnn_feature = self._get_dnn_state(link_state, flow[:, :2].flatten())
+        dnn_feature = self._get_dnn_state(link_state, flow[:, :2].flatten()/max(self.link_capacity))
         return dnn_feature
 
     def reset_eval(self):
         self.data_step = self.action_effective_step  # set the started flow point by random
         flow = self.sample(self.data_step)
         link_state = self._get_link_features(flow)
-        dnn_feature = self._get_dnn_state(link_state, flow[:, :2].flatten())
+        dnn_feature = self._get_dnn_state(link_state, flow[:, :2].flatten()/max(self.link_capacity))
         return dnn_feature
 
     def sample(self, pointer):
@@ -159,6 +160,7 @@ class Environment(object):
         return flows
 
     def step(self, action_all):
+        self.counter +=1
         self.data_step = (self.data_step + self.action_effective_step) % self.point_count
         self._set_action(action_all)
         flows = self.sample(self.data_step)
@@ -167,12 +169,21 @@ class Environment(object):
         max_util = np.max(avg_util)
         global_reward = float(1.0 - max_util)
         # print("global_reward:",global_reward)
-        if max_util > 1.0:
+        if max_util > 1.0 or self.counter >=100:
             done = True
             global_reward -= 1.0
         else:
             done = False
-        rewards = [global_reward] + [global_reward] * len(self.controllable_sd_list)
+        # calculate partial reward
+        agent_reward = []
+        for i,agent in enumerate(self.controllable_sd_list):
+            path_mask = np.copy(self.paths_mask[agent])
+            m_util = np.max(path_mask * np.expand_dims(avg_util,axis=0),axis=-1)
+            rest_bd = 1.0 - m_util
+            rew = np.sum(rest_bd * action_all[i])
+            agent_reward.append(rew)
+        # rewards = agent_reward + [global_reward]
+        rewards = [global_reward]*len(self.controllable_sd_list) + [global_reward]
         dnn_feature = self._get_dnn_state(link_state, flows[:, :2].flatten()/np.max(self.link_capacity))
         info = {"link usage average": avg_util}
         return rewards, dnn_feature, done, info
@@ -195,7 +206,7 @@ class Environment(object):
         else:
             done = False
         rewards = [global_reward] + [global_reward] * len(self.controllable_sd_list)
-        dnn_feature = self._get_dnn_state(link_state, flows[:, :2].flatten())
+        dnn_feature = self._get_dnn_state(link_state, flows[:, :2].flatten()/max(self.link_capacity))
         info = {"link usage average": avg_util}
         return rewards, dnn_feature, done, info
 
@@ -230,17 +241,18 @@ class Environment(object):
         return np.array(paths_mask)
 
     def _get_dnn_state(self, link_state, global_state):
-        feature_A = np.concatenate([link_state[:4, :].flatten(), global_state])
-        feature_B = np.concatenate([link_state[3:, :].flatten(), global_state])
+        # feature_A = np.concatenate([link_state[:4, :].flatten(), global_state])
+        # feature_B = np.concatenate([link_state[3:, :].flatten(), global_state])
+        feature_A = np.concatenate([link_state.flatten(), global_state])
+        feature_B = np.concatenate([link_state.flatten(), global_state])
         return [feature_A, feature_B]
 
 
 if __name__ == "__main__":
     env = Environment()
-    flows = env.sample(628)
+    # flows = env.sample(628)
     flows = env.reset_eval()
-    actions = np.array([[0.5,0.5],[0.5,0.5]])
-    for i in range(10):
-        env.step_eval(actions)
-    print(flows[0].shape)
-    print(flows[1].shape)
+    actions = np.array([[0.0,1.0],[0.0,1.0]])
+    for i in range(20):
+        rewards, dnn_feature, done, info= env.step(actions)
+        print(rewards)
